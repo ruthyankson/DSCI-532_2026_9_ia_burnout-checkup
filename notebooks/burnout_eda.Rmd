@@ -1,0 +1,236 @@
+---
+title: "AI Productivity and Burnout EDA"
+output: html_document
+---
+
+```{r setup, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(scales)
+library(patchwork)
+library(janitor)
+```
+
+# Dataset overview
+The merged dataset contains 4,500 observations and 17 variables, with no missing values.
+
+## Load data
+
+```{r load-data}
+features <- read_csv("../data/ai_productivity_features.csv", show_col_types = FALSE) |>
+  clean_names()
+
+targets <- read_csv("../data/ai_productivity_targets.csv", show_col_types = FALSE) |>
+  clean_names()
+
+df <- features |>
+  left_join(targets, by = "employee_id")
+
+glimpse(df)
+summary(df)
+```
+
+## Quick data quality checks
+
+```{r quality-checks}
+cat("Rows:", nrow(df), "\n")
+cat("Columns:", ncol(df), "\n\n")
+
+missing_summary <- df |>
+  summarise(across(everything(), ~ sum(is.na(.)))) |>
+  pivot_longer(everything(), names_to = "column", values_to = "missing_count") |>
+  arrange(desc(missing_count))
+
+missing_summary
+```
+
+
+## Distribution of burnout risk score
+
+```{r burnout-hist}
+ggplot(df, aes(x = burnout_risk_score)) +
+  geom_histogram(binwidth = 0.5, color = "black", fill = "sandybrown") +
+  scale_x_continuous(breaks = seq(floor(min(df$burnout_risk_score, na.rm = TRUE)),
+                                  ceiling(max(df$burnout_risk_score, na.rm = TRUE)),
+                                  by = 0.5)) +
+  labs(
+    title = "Burnout Risk Score Distribution",
+    x = "Burnout Risk Score",
+    y = "Count"
+  ) +
+  theme_minimal(base_size = 12)
+```
+
+## Burnout score diagnostics
+
+This section checks whether the spike at 10 is coming from the underlying data or from the plot.
+
+```{r burnout-diagnostics}
+df |>
+  count(burnout_risk_score, sort = TRUE)
+
+sum(df$burnout_risk_score == 10, na.rm = TRUE)
+
+summary(df$burnout_risk_score)
+```
+
+## Distribution by job role
+
+```{r burnout-by-role}
+ggplot(df, aes(x = burnout_risk_score)) +
+  geom_histogram(binwidth = 0.5, color = "black", fill = "steelblue") +
+  facet_wrap(~ job_role, scales = "free_y") +
+  labs(
+    title = "Burnout Risk Score by Job Role",
+    x = "Burnout Risk Score",
+    y = "Count"
+  ) +
+  theme_minimal(base_size = 12)
+```
+
+## Check whether filtering changes the spike
+
+```{r filter-check}
+designer_df <- df |>
+  filter(job_role == "Designer")
+
+writer_df <- df |>
+  filter(job_role == "Writer")
+
+p1 <- ggplot(designer_df, aes(x = burnout_risk_score)) +
+  geom_histogram(binwidth = 0.5, color = "black", fill = "tomato") +
+  labs(title = "Designer", x = "Burnout Risk Score", y = "Count") +
+  theme_minimal(base_size = 12)
+
+p2 <- ggplot(writer_df, aes(x = burnout_risk_score)) +
+  geom_histogram(binwidth = 0.5, color = "black", fill = "darkseagreen3") +
+  labs(title = "Writer", x = "Burnout Risk Score", y = "Count") +
+  theme_minimal(base_size = 12)
+
+p1 + p2
+```
+
+## Productivity score distribution
+
+```{r productivity-hist}
+ggplot(df, aes(x = productivity_score)) +
+  geom_histogram(binwidth = 5, color = "black", fill = "mediumpurple") +
+  labs(
+    title = "Productivity Score Distribution",
+    x = "Productivity Score",
+    y = "Count"
+  ) +
+  theme_minimal(base_size = 12)
+```
+
+## Relationship between burnout and productivity
+
+```{r burnout-vs-productivity}
+ggplot(df, aes(x = burnout_risk_score, y = productivity_score, color = job_role)) +
+  geom_point(alpha = 0.7) +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(
+    title = "Burnout Risk Score vs Productivity Score",
+    x = "Burnout Risk Score",
+    y = "Productivity Score",
+    color = "Job Role"
+  ) +
+  theme_minimal(base_size = 12)
+```
+
+## Correlation heatmap for numeric variables
+
+```{r correlation-heatmap}
+numeric_df <- df |>
+  select(where(is.numeric))
+
+cor_mat <- cor(numeric_df, use = "complete.obs")
+
+cor_df <- as.data.frame(as.table(cor_mat))
+
+ggplot(cor_df, aes(Var1, Var2, fill = Freq)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "firebrick", mid = "white", high = "navy", midpoint = 0) +
+  labs(
+    title = "Correlation Heatmap",
+    x = NULL,
+    y = NULL,
+    fill = "Correlation"
+  ) +
+  theme_minimal(base_size = 11) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+## Burnout by key categorical groups
+
+```{r boxplots}
+p_deadline <- ggplot(df, aes(x = deadline_pressure_level, y = burnout_risk_score, fill = deadline_pressure_level)) +
+  geom_boxplot(show.legend = FALSE) +
+  labs(title = "Burnout by Deadline Pressure", x = "Deadline Pressure Level", y = "Burnout Risk Score") +
+  theme_minimal(base_size = 12)
+
+p_role <- ggplot(df, aes(x = job_role, y = burnout_risk_score, fill = job_role)) +
+  geom_boxplot(show.legend = FALSE) +
+  labs(title = "Burnout by Job Role", x = "Job Role", y = "Burnout Risk Score") +
+  theme_minimal(base_size = 12) +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1))
+
+p_deadline + p_role
+```
+
+## Burnout against likely drivers
+
+```{r driver-scatterplots}
+p_focus <- ggplot(df, aes(x = focus_hours_per_day, y = burnout_risk_score)) +
+  geom_point(alpha = 0.6, color = "steelblue4") +
+  geom_smooth(method = "lm", se = FALSE, color = "black") +
+  labs(title = "Burnout vs Focus Hours", x = "Focus Hours per Day", y = "Burnout Risk Score") +
+  theme_minimal(base_size = 12)
+
+p_balance <- ggplot(df, aes(x = work_life_balance_score, y = burnout_risk_score)) +
+  geom_point(alpha = 0.6, color = "darkorange3") +
+  geom_smooth(method = "lm", se = FALSE, color = "black") +
+  labs(title = "Burnout vs Work-Life Balance", x = "Work-Life Balance Score", y = "Burnout Risk Score") +
+  theme_minimal(base_size = 12)
+
+p_automation <- ggplot(df, aes(x = tasks_automated_percent, y = burnout_risk_score)) +
+  geom_point(alpha = 0.6, color = "darkgreen") +
+  geom_smooth(method = "lm", se = FALSE, color = "black") +
+  labs(title = "Burnout vs Tasks Automated", x = "Tasks Automated (%)", y = "Burnout Risk Score") +
+  theme_minimal(base_size = 12)
+
+p_focus / p_balance / p_automation
+```
+
+## Top observations with maximum burnout
+
+```{r max-burnout}
+df |>
+  filter(burnout_risk_score == max(burnout_risk_score, na.rm = TRUE)) |>
+  arrange(desc(productivity_score)) |>
+  select(employee_id, job_role, burnout_risk_score, productivity_score,
+         deadline_pressure_level, manual_work_hours_per_week,
+         learning_time_hours_per_week, focus_hours_per_day,
+         work_life_balance_score)
+```
+
+## Brief interpretation notes
+
+```{r interpretation, results='asis'}
+share_at_10 <- mean(df$burnout_risk_score == 10, na.rm = TRUE)
+
+cat(paste0(
+  "- Proportion of observations with burnout risk score exactly 10: ",
+  percent(share_at_10, accuracy = 0.1), "\n",
+  "- The spike at 10 is coming from the data itself.\n"
+))
+```
+
+### Main target distribution finding
+Burnout risk is strongly right-concentrated, with 37.4% of observations at the maximum score of 10.
+
+### Cross-group observation
+This pattern persists across job roles, suggesting that high burnout is widespread rather than isolated.
+
+### Relationship observation
+Work-life balance appears negatively associated with burnout, while productivity varies across the burnout range.
