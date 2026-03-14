@@ -11,8 +11,8 @@ id = '019cee49-5bd2-1729-70c5-8d5ae3a7765d'
 dashboard_url = 'https://connect.posit.cloud/ruthyankson/content/019cee49-5bd2-1729-70c5-8d5ae3a7765d'
 direct_url = 'https://019cee49-5bd2-1729-70c5-8d5ae3a7765d.share.connect.posit.cloud'
 logs_url = 'https://connect.posit.cloud/ruthyankson/content/019cee49-5bd2-1729-70c5-8d5ae3a7765d/history'
-deployed_at = '2026-03-14T14:38:39-07:00'
-bundle_id = '019cee49-5bd4-b432-16d9-ea0bdc9ec01a'
+deployed_at = '2026-03-14T14:56:49-07:00'
+bundle_id = '019cee5a-03df-a9bf-93ea-c2efce111663'
 files = [
   '.posit/publish/DSCI-532_2026_9_ia_burnout-che-PH40.toml',
   '.posit/publish/deployments/deployment-QT2N.toml',

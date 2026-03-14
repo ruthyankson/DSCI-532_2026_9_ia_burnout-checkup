@@ -3,11 +3,12 @@ library(readr)
 library(dplyr)
 library(ggplot2)
 
-features <- read_csv(
-    "data/ai_productivity_features.csv",
-    show_col_types = FALSE
-)
-targets <- read_csv("data/ai_productivity_targets.csv", show_col_types = FALSE)
+print(getwd())
+print(list.files())
+print(list.files("data"))
+
+features <- read_csv("data/ai_productivity_features.csv", show_col_types = FALSE)
+targets  <- read_csv("data/ai_productivity_targets.csv", show_col_types = FALSE)
 
 df <- left_join(features, targets, by = "Employee_ID")
 
