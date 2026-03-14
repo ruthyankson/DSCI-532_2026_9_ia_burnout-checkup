@@ -67,7 +67,7 @@ shiny::runApp()
 
 ## Deployment
 
-This app is deployed on Posit Connect Cloud.
+This app is deployed on [Posit Connect Cloud](https://019cee61-1d34-d308-a332-684fc3faaab7.share.connect.posit.cloud/).
 
 ## License
 
